@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/custom/Card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { FileUp, Check, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { FileUp, Check, AlertCircle, Loader2, AlertTriangle, FileText } from 'lucide-react';
 import { PriceListRow, ProcessedPriceList } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -236,48 +236,49 @@ const PriceListUploader = ({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center">
-          <FileUp size={40} className="text-muted-foreground mb-4" />
-          <p className="text-sm text-center text-muted-foreground mb-2">
-            Drag & drop your price list file here, or click to browse
-          </p>
-          <p className="text-xs text-center text-muted-foreground mb-4">
-            Supports PDF, Excel, CSV formats
-          </p>
-          <input
-            id="file-upload"
-            type="file"
-            className="hidden"
-            accept=".pdf,.xlsx,.xls,.csv"
-            onChange={handleFileChange}
-            disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
-          />
-          <Button
-            variant="outline"
-            onClick={() => document.getElementById('file-upload')?.click()}
-            disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
-          >
-            Select File
-          </Button>
-        </div>
-
-        {file && (
-          <div className="p-3 border rounded-lg bg-accent/30 flex items-center justify-between">
-            <div className="truncate">
-              <p className="text-sm font-medium truncate">{file.name}</p>
-              <p className="text-xs text-muted-foreground">
+          {file ? (
+            <div className="flex flex-col items-center">
+              <FileText size={40} className="text-primary mb-3" />
+              <p className="text-sm font-medium">{file.name}</p>
+              <p className="text-xs text-muted-foreground mb-2">
                 {(file.size / 1024).toFixed(2)} KB
               </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFile(null)}
+                disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
+              >
+                Change file
+              </Button>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setFile(null)}
-              disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
-            >
-              Remove
-            </Button>
-          </div>
-        )}
+          ) : (
+            <>
+              <FileUp size={40} className="text-muted-foreground mb-4" />
+              <p className="text-sm text-center text-muted-foreground mb-2">
+                Drag & drop your price list file here, or click to browse
+              </p>
+              <p className="text-xs text-center text-muted-foreground mb-4">
+                Supports PDF, Excel, CSV formats
+              </p>
+              <input
+                id="file-upload"
+                type="file"
+                className="hidden"
+                accept=".pdf,.xlsx,.xls,.csv"
+                onChange={handleFileChange}
+                disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
+              />
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById('file-upload')?.click()}
+                disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
+              >
+                Select File
+              </Button>
+            </>
+          )}
+        </div>
 
         {renderUploadStatus()}
 

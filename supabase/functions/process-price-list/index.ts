@@ -61,8 +61,13 @@ serve(async (req) => {
     console.log(`Processing price list for supplier ${supplierId}`)
     console.log(`Filename: ${fileName}`)
     
-    // Extract the file content as text instead of treating it as an image
-    // Call OpenAI API with the text extraction prompt
+    // Decode base64 file and convert to binary
+    let fileContent = file;
+    if (file.includes(';base64,')) {
+      fileContent = file.split(';base64,')[1];
+    }
+    
+    // Prepare the file as an attachment for OpenAI
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -89,9 +94,18 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `I have a price list in PDF format that contains tyre information. Here's the file content encoded in base64: ${file}. 
-            Please extract all tyre information including sizes (in WIDTH/ASPECT_RATIO/DIAMETER format like 205/55R16), brands, models, and costs. 
-            Respond only with a JSON array containing objects with size, brand, model, and cost fields.`
+            content: [
+              { 
+                type: 'text', 
+                text: 'Extract all tyre information from this PDF price list. Return ONLY a JSON array with objects containing size, brand, model, and cost fields.' 
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:application/pdf;base64,${fileContent}`
+                }
+              }
+            ]
           },
         ],
         max_tokens: 4000,
