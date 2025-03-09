@@ -20,11 +20,11 @@ interface ResultsTableProps {
   isLoading?: boolean;
 }
 
-type SortField = 'brand' | 'model' | 'supplier' | 'cost' | 'sellPrice' | 'margin';
+type SortField = 'brand' | 'model' | 'supplier' | 'cost' | 'sell_price' | 'margin_value';
 type SortDirection = 'asc' | 'desc';
 
 const ResultsTable = ({ results, isLoading = false }: ResultsTableProps) => {
-  const [sortField, setSortField] = useState<SortField>('margin');
+  const [sortField, setSortField] = useState<SortField>('margin_value');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const handleSort = (field: SortField) => {
@@ -140,8 +140,8 @@ const ResultsTable = ({ results, isLoading = false }: ResultsTableProps) => {
                 <TableHead><SortButton field="model" label="Model" /></TableHead>
                 <TableHead><SortButton field="supplier" label="Supplier" /></TableHead>
                 <TableHead className="text-right"><SortButton field="cost" label="Cost" /></TableHead>
-                <TableHead className="text-right"><SortButton field="sellPrice" label="Sell Price" /></TableHead>
-                <TableHead className="text-right"><SortButton field="margin" label="Margin" /></TableHead>
+                <TableHead className="text-right"><SortButton field="sell_price" label="Sell Price" /></TableHead>
+                <TableHead className="text-right"><SortButton field="margin_value" label="Margin" /></TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -161,18 +161,18 @@ const ResultsTable = ({ results, isLoading = false }: ResultsTableProps) => {
                     <TableCell>{result.model}</TableCell>
                     <TableCell>{result.supplier}</TableCell>
                     <TableCell className="text-right">${result.cost.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-medium">${result.sellPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">${result.sell_price.toFixed(2)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {result.marginType === 'percentage' ? (
+                        {result.margin_type === 'percentage' ? (
                           <Percent size={14} className="text-green-500" />
                         ) : (
                           <DollarSign size={14} className="text-green-500" />
                         )}
                         <span className="text-green-500 font-medium">
-                          {result.marginType === 'percentage'
-                            ? `${result.margin}%`
-                            : `$${result.margin.toFixed(2)}`}
+                          {result.margin_type === 'percentage'
+                            ? `${result.margin_value}%`
+                            : `$${result.margin_value.toFixed(2)}`}
                         </span>
                       </div>
                     </TableCell>

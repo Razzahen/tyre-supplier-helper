@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMarginConfigs, createMarginConfig, deleteMarginConfig } from '@/api/margins';
 import { getTyreSizes } from '@/api/tyres';
 import { getTyreBrands } from '@/api/tyres';
+import { supabase } from '@/integrations/supabase/client';
 
 const Margins = () => {
   const { toast } = useToast();
@@ -35,7 +36,19 @@ const Margins = () => {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: createMarginConfig,
+    mutationFn: async (config: Partial<MarginConfigType>) => {
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error("Not authenticated");
+      
+      const fullConfig = {
+        ...config,
+        user_id: user.id
+      } as Omit<MarginConfigType, 'id' | 'created_at' | 'updated_at'>;
+      
+      return createMarginConfig(fullConfig);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['margin-configs'] });
       toast({
@@ -85,7 +98,7 @@ const Margins = () => {
     createMutation.mutate({
       ...config,
       priority
-    } as Omit<MarginConfigType, 'id' | 'created_at' | 'updated_at' | 'user_id'>);
+    });
   };
 
   const handleDeleteConfig = (configId: string) => {

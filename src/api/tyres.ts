@@ -129,6 +129,7 @@ export const searchTyres = async (size: string): Promise<TyreSearchResult[]> => 
     throw error;
   }
 
+  // Cast the string margin_type to our specific union type
   return data.map(item => ({
     id: item.id,
     size: item.size,
@@ -137,7 +138,7 @@ export const searchTyres = async (size: string): Promise<TyreSearchResult[]> => 
     supplier: item.supplier,
     cost: item.cost,
     sell_price: item.sell_price,
-    margin_type: item.margin_type || 'percentage',
+    margin_type: (item.margin_type || 'percentage') as 'percentage' | 'fixed',
     margin_value: item.margin_value || 40
   })) || [];
 };

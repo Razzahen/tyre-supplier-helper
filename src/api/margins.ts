@@ -13,7 +13,7 @@ export const getMarginConfigs = async (): Promise<MarginConfig[]> => {
     throw error;
   }
 
-  return data || [];
+  return data as MarginConfig[] || [];
 };
 
 export const createMarginConfig = async (
@@ -21,7 +21,7 @@ export const createMarginConfig = async (
 ): Promise<MarginConfig> => {
   const { data, error } = await supabase
     .from('margin_configs')
-    .insert([config])
+    .insert(config)
     .select()
     .single();
 
@@ -30,7 +30,7 @@ export const createMarginConfig = async (
     throw error;
   }
 
-  return data;
+  return data as MarginConfig;
 };
 
 export const updateMarginConfig = async (
@@ -54,7 +54,7 @@ export const updateMarginConfig = async (
     throw error;
   }
 
-  return data;
+  return data as MarginConfig;
 };
 
 export const deleteMarginConfig = async (id: string): Promise<void> => {

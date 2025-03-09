@@ -82,7 +82,7 @@ const SupplierList = ({
                   )}
                   <div className="flex items-center text-xs text-muted-foreground mt-2">
                     <Calendar size={12} className="mr-1" />
-                    Added {format(new Date(supplier.createdAt), 'PP')}
+                    Added {format(new Date(supplier.created_at), 'PP')}
                   </div>
                 </div>
 

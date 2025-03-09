@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface SupplierFormProps {
   supplier?: Supplier;
-  onSubmit: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'userId'>) => void;
+  onSubmit: (supplier: Omit<Supplier, 'id' | 'created_at' | 'user_id'>) => void;
   onCancel: () => void;
 }
 

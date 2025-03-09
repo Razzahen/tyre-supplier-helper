@@ -17,9 +17,17 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
 };
 
 export const createSupplier = async (supplier: Omit<Supplier, 'id' | 'user_id' | 'created_at'>): Promise<Supplier> => {
+  // Get current user ID
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  const newSupplier = {
+    ...supplier,
+    user_id: user?.id
+  };
+
   const { data, error } = await supabase
     .from('suppliers')
-    .insert([supplier])
+    .insert(newSupplier)
     .select()
     .single();
 

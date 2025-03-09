@@ -50,10 +50,10 @@ const MarginConfig = ({
     }
 
     const config: Partial<MarginConfigType> = {
-      marginType,
-      marginValue: marginValueNum,
-      tyreSizeId: size !== 'all' ? size : undefined,
-      brandId: brand !== 'all' ? brand : undefined,
+      margin_type: marginType,
+      margin_value: marginValueNum,
+      tyre_size_id: size !== 'all' ? size : undefined,
+      brand_id: brand !== 'all' ? brand : undefined,
     };
 
     onSave(config);
@@ -74,8 +74,8 @@ const MarginConfig = ({
 
   // Find existing config that matches current selection
   const matchingConfig = existingConfigs.find(config => 
-    (config.tyreSizeId === size || (size === 'all' && !config.tyreSizeId)) && 
-    (config.brandId === brand || (brand === 'all' && !config.brandId))
+    (config.tyre_size_id === size || (size === 'all' && !config.tyre_size_id)) && 
+    (config.brand_id === brand || (brand === 'all' && !config.brand_id))
   );
 
   return (
@@ -127,15 +127,15 @@ const MarginConfig = ({
           <div className="bg-amber-50 border-amber-200 border rounded-lg p-4 text-amber-800">
             <p className="text-sm flex items-center">
               <span className="font-medium mr-2">Existing configuration:</span>
-              {matchingConfig.marginType === 'percentage' ? (
+              {matchingConfig.margin_type === 'percentage' ? (
                 <Badge variant="outline" className="bg-amber-100 text-amber-800">
                   <Percent size={12} className="mr-1" />
-                  {matchingConfig.marginValue}%
+                  {matchingConfig.margin_value}%
                 </Badge>
               ) : (
                 <Badge variant="outline" className="bg-amber-100 text-amber-800">
                   <DollarSign size={12} className="mr-1" />
-                  ${matchingConfig.marginValue.toFixed(2)}
+                  ${matchingConfig.margin_value.toFixed(2)}
                 </Badge>
               )}
             </p>
