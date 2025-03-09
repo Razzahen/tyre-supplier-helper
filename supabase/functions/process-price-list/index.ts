@@ -14,6 +14,33 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+// Validate tyre size format (e.g., 205/55R16)
+function isValidTyreSize(size: string): boolean {
+  const sizeRegex = /^(\d+)\/(\d+)R(\d+)$/i;
+  return sizeRegex.test(size);
+}
+
+// Validate tyre data
+function validateTyreData(item: any): { valid: boolean, errors: string[] } {
+  const errors: string[] = [];
+  
+  // Check required fields
+  if (!item.size) errors.push('Missing size');
+  if (!item.brand) errors.push('Missing brand');
+  if (!item.model) errors.push('Missing model');
+  if (typeof item.cost !== 'number' || item.cost <= 0) errors.push('Invalid cost');
+  
+  // Validate size format if present
+  if (item.size && !isValidTyreSize(item.size)) {
+    errors.push(`Invalid size format: ${item.size}. Expected format like 205/55R16`);
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -62,7 +89,14 @@ serve(async (req) => {
             content: `You are a specialized AI for extracting tyre price information from price lists. 
             Extract all tyre details including size (format: WIDTH/ASPECT_RATIO/DIAMETER like 205/55R16), 
             brand, model, and cost. Return the data as a JSON array with objects containing these fields: 
-            size, brand, model, cost (as a number). Do not include any other text in your response.`
+            size, brand, model, cost (as a number). 
+            
+            IMPORTANT VALIDATIONS:
+            - Ensure all sizes follow the standard format (e.g., 205/55R16).
+            - All costs must be positive numbers.
+            - Brand and model must be non-empty strings.
+            - Do not include any other text in your response, only the JSON array.
+            - If you're uncertain about any entry, skip it rather than guessing.`
           },
           {
             role: 'user',
@@ -91,11 +125,16 @@ serve(async (req) => {
     const openAIResponse = await response.json()
     const content = openAIResponse.choices[0].message.content
     
+    console.log('OpenAI response received successfully')
+    
     // Parse the response to extract the JSON data
     let extractedData = []
+    let parseError = null
+    
     try {
       // Try to parse the entire response as JSON
       extractedData = JSON.parse(content)
+      console.log(`Successfully parsed JSON with ${extractedData.length} items`)
     } catch (e) {
       // If that fails, try to extract JSON from the text response
       console.log("Couldn't parse full response as JSON, attempting to extract JSON part")
@@ -103,39 +142,63 @@ serve(async (req) => {
       if (jsonMatch) {
         try {
           extractedData = JSON.parse(jsonMatch[0])
+          console.log(`Successfully extracted and parsed JSON with ${extractedData.length} items`)
         } catch (jsonError) {
-          console.error("Error parsing extracted JSON:", jsonError)
-          throw new Error("Failed to parse JSON from OpenAI response")
+          parseError = `Error parsing extracted JSON: ${jsonError.message}`
+          console.error(parseError)
         }
       } else {
-        throw new Error("Could not extract JSON data from OpenAI response")
+        parseError = "Could not extract JSON data from OpenAI response"
+        console.error(parseError)
       }
+    }
+
+    if (extractedData.length === 0) {
+      throw new Error(parseError || "No valid data could be extracted from the document")
     }
 
     console.log(`Extracted ${extractedData.length} tyre prices`)
 
     // Validate the extracted data
-    const validatedData = extractedData
-      .filter(item => 
-        item.size && item.brand && item.model && 
-        typeof item.cost === 'number' && item.cost > 0
-      )
-      .map(item => ({
-        size: item.size,
-        brand: item.brand,
-        model: item.model,
-        cost: item.cost
-      }))
+    const validatedData = []
+    const invalidItems = []
+    
+    for (const item of extractedData) {
+      const validation = validateTyreData(item)
+      if (validation.valid) {
+        validatedData.push({
+          size: item.size,
+          brand: item.brand,
+          model: item.model,
+          cost: item.cost
+        })
+      } else {
+        invalidItems.push({
+          item,
+          errors: validation.errors
+        })
+      }
+    }
 
     console.log(`Validated ${validatedData.length} tyre prices`)
+    console.log(`Found ${invalidItems.length} invalid items`)
+    
+    if (invalidItems.length > 0) {
+      console.log('Invalid items details:', JSON.stringify(invalidItems))
+    }
+
+    if (validatedData.length === 0) {
+      throw new Error("No valid tyre data found in the document. Please check the file format and content.")
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Successfully processed ${validatedData.length} tyre prices`,
+        message: `Successfully processed ${validatedData.length} tyre prices${invalidItems.length > 0 ? ` (ignored ${invalidItems.length} invalid entries)` : ''}`,
         data: {
           supplierId,
           rows: validatedData,
+          invalidRows: invalidItems.map(i => `${i.item.brand || 'Unknown'} ${i.item.model || 'Unknown'} - ${i.errors.join(', ')}`),
           total: validatedData.length
         }
       }),

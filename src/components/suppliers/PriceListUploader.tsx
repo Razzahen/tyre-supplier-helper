@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/custom/Card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { FileUp, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { FileUp, Check, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { PriceListRow, ProcessedPriceList } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +16,7 @@ interface PriceListUploaderProps {
   onUploadComplete: (data: ProcessedPriceList) => void;
 }
 
-type UploadStatus = 'idle' | 'uploading' | 'processing' | 'success' | 'error';
+type UploadStatus = 'idle' | 'uploading' | 'processing' | 'success' | 'error' | 'partial-success';
 
 const PriceListUploader = ({
   supplierId,
@@ -30,6 +30,7 @@ const PriceListUploader = ({
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   const [results, setResults] = useState<PriceListRow[]>([]);
+  const [invalidRows, setInvalidRows] = useState<string[]>([]);
 
   const processPriceList = async (file: File): Promise<ProcessedPriceList> => {
     setUploadStatus('uploading');
@@ -71,9 +72,17 @@ const PriceListUploader = ({
       
       setResults(data.data.rows);
       
+      if (data.data.invalidRows && data.data.invalidRows.length > 0) {
+        setInvalidRows(data.data.invalidRows);
+        setUploadStatus('partial-success');
+      } else {
+        setUploadStatus('success');
+      }
+      
       return {
         supplierId,
         rows: data.data.rows,
+        errorRows: data.data.invalidRows
       };
     } catch (error) {
       console.error('Error processing price list:', error);
@@ -83,9 +92,26 @@ const PriceListUploader = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      
+      // Check if file is PDF, Excel, or CSV
+      const validTypes = ['application/pdf', 'application/vnd.ms-excel', 
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
+                         'text/csv'];
+      
+      if (!validTypes.includes(selectedFile.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a PDF, Excel, or CSV file",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setFile(selectedFile);
       setUploadStatus('idle');
       setErrorMessage('');
+      setInvalidRows([]);
     }
   };
 
@@ -101,12 +127,22 @@ const PriceListUploader = ({
 
     try {
       const result = await processPriceList(file);
-      setUploadStatus('success');
-      toast({
-        title: "Success",
-        description: `Processed ${result.rows.length} tyre prices`,
-      });
-      onUploadComplete(result);
+      
+      if (result.rows.length > 0) {
+        toast({
+          title: "Success",
+          description: `Processed ${result.rows.length} tyre prices${result.errorRows && result.errorRows.length > 0 ? ` (${result.errorRows.length} invalid entries skipped)` : ''}`,
+        });
+        onUploadComplete(result);
+      } else {
+        setUploadStatus('error');
+        setErrorMessage('No valid tyre data found in the document. Please check the file format and content.');
+        toast({
+          title: "Error",
+          description: "No valid tyre data found",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       setUploadStatus('error');
       setErrorMessage(error.message || 'Failed to process the price list. Please try again or use a different file format.');
@@ -149,6 +185,31 @@ const PriceListUploader = ({
               Price list successfully processed. {results.length} tyre prices imported.
             </AlertDescription>
           </Alert>
+        );
+      case 'partial-success':
+        return (
+          <div className="space-y-4">
+            <Alert variant="default" className="bg-yellow-50 text-yellow-900 border-yellow-200">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertTitle>Partial Success</AlertTitle>
+              <AlertDescription>
+                {results.length} tyre prices imported. {invalidRows.length} invalid entries were skipped.
+              </AlertDescription>
+            </Alert>
+            {invalidRows.length > 0 && (
+              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm">
+                <p className="font-medium text-yellow-900 mb-1">Invalid entries:</p>
+                <ul className="list-disc pl-5 text-xs space-y-1 text-yellow-800">
+                  {invalidRows.slice(0, 5).map((row, idx) => (
+                    <li key={idx}>{row}</li>
+                  ))}
+                  {invalidRows.length > 5 && (
+                    <li>And {invalidRows.length - 5} more...</li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
         );
       case 'error':
         return (
@@ -220,7 +281,7 @@ const PriceListUploader = ({
 
         {renderUploadStatus()}
 
-        {uploadStatus === 'success' && results.length > 0 && (
+        {(uploadStatus === 'success' || uploadStatus === 'partial-success') && results.length > 0 && (
           <div className="border rounded-lg overflow-hidden">
             <div className="bg-muted py-2 px-4 text-sm font-medium">
               Preview ({Math.min(3, results.length)} of {results.length})
