@@ -2,6 +2,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { decode as base64Decode } from "https://deno.land/std@0.177.0/encoding/base64.ts";
+import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,6 +42,49 @@ function validateTyreData(item: any): { valid: boolean, errors: string[] } {
   };
 }
 
+// Convert the first page of a PDF to a PNG image
+async function convertPdfToImage(pdfBase64: string): Promise<string> {
+  try {
+    // If the base64 string has a data URI prefix, remove it
+    let cleanBase64 = pdfBase64;
+    if (pdfBase64.includes(';base64,')) {
+      cleanBase64 = pdfBase64.split(';base64,')[1];
+    }
+    
+    // Decode base64 to bytes
+    const pdfBytes = base64Decode(cleanBase64);
+    
+    // Load PDF document
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    
+    // Get the first page
+    const pages = pdfDoc.getPages();
+    if (pages.length === 0) {
+      throw new Error('PDF has no pages');
+    }
+    
+    const firstPage = pages[0];
+    const { width, height } = firstPage.getSize();
+    
+    // Save just the first page to a new PDF
+    const singlePagePdf = await PDFDocument.create();
+    const [copiedPage] = await singlePagePdf.copyPages(pdfDoc, [0]);
+    singlePagePdf.addPage(copiedPage);
+    
+    // Serialize the PDF to bytes
+    const singlePageBytes = await singlePagePdf.save();
+    
+    // Convert to base64
+    const singlePageBase64 = btoa(String.fromCharCode(...new Uint8Array(singlePageBytes)));
+    
+    // Return with data URI prefix for OpenAI
+    return `data:application/pdf;base64,${singlePageBase64}`;
+  } catch (error) {
+    console.error('Error converting PDF to image:', error);
+    throw new Error(`Failed to convert PDF to image: ${error.message}`);
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -61,10 +105,14 @@ serve(async (req) => {
     console.log(`Processing price list for supplier ${supplierId}`)
     console.log(`Filename: ${fileName}`)
     
-    // Extract base64 content
-    let fileContent = file;
-    if (file.includes(';base64,')) {
-      fileContent = file.split(';base64,')[1];
+    // Check if this is a PDF file
+    const isPdf = fileName?.toLowerCase().endsWith('.pdf') || file.includes('application/pdf');
+    let processableFile = file;
+    
+    if (isPdf) {
+      console.log('Converting PDF to a processable format...');
+      processableFile = await convertPdfToImage(file);
+      console.log('PDF conversion complete');
     }
     
     // Call OpenAI API to extract data from the price list
@@ -94,9 +142,18 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `I have a price list in PDF format that contains tyre information. Here's the file content encoded in base64: ${fileContent}. 
-            Please extract all tyre information including sizes (in WIDTH/ASPECT_RATIO/DIAMETER format like 205/55R16), brands, models, and costs. 
-            Respond only with a JSON array containing objects with size, brand, model, and cost fields.`
+            content: [
+              {
+                type: 'text',
+                text: `I have a price list that contains tyre information. Please extract all tyre information including sizes (in WIDTH/ASPECT_RATIO/DIAMETER format like 205/55R16), brands, models, and costs. Respond only with a JSON array containing objects with size, brand, model, and cost fields.`
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: processableFile
+                }
+              }
+            ]
           }
         ],
         max_tokens: 4000,
