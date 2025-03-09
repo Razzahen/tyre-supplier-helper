@@ -53,7 +53,7 @@ const ResultsTable = ({ results, isLoading = false }: ResultsTableProps) => {
     return 0;
   });
 
-  const variants = {
+  const containerVariants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
@@ -146,17 +146,15 @@ const ResultsTable = ({ results, isLoading = false }: ResultsTableProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <motion.div
-                variants={variants}
+              <motion.tbody 
+                variants={containerVariants}
                 initial="hidden"
                 animate="show"
-                component={React.Fragment}
               >
                 {sortedResults.map((result) => (
                   <motion.tr
                     key={result.id}
                     variants={itemVariants}
-                    component={TableRow}
                     className="hover:bg-accent/50 transition-colors"
                   >
                     <TableCell className="font-medium">{result.brand}</TableCell>
@@ -185,7 +183,7 @@ const ResultsTable = ({ results, isLoading = false }: ResultsTableProps) => {
                     </TableCell>
                   </motion.tr>
                 ))}
-              </motion.div>
+              </motion.tbody>
             </TableBody>
           </Table>
         </div>
