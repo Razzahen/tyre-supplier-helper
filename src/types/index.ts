@@ -1,78 +1,94 @@
 
-export interface Supplier {
+// Supabase table types
+export type TyreSize = {
+  id: string;
+  size: string;
+  width: number;
+  aspect_ratio: number;
+  diameter: number;
+  created_at: string;
+}
+
+export type TyreBrand = {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export type TyreModel = {
+  id: string;
+  brand_id: string;
+  name: string;
+  created_at: string;
+}
+
+export type Supplier = {
   id: string;
   name: string;
   contact?: string;
   email?: string;
   phone?: string;
-  createdAt: string;
-  userId?: string;
+  user_id: string;
+  created_at: string;
 }
 
-export interface TyreSize {
+export type TyrePrice = {
   id: string;
-  size: string; // e.g. "205/55R16"
-  width: number; // e.g. 205
-  aspectRatio: number; // e.g. 55
-  diameter: number; // e.g. 16
+  supplier_id: string;
+  tyre_size_id: string;
+  tyre_model_id: string;
+  brand_id: string;
+  cost: number;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface TyreBrand {
+export type MarginConfig = {
   id: string;
-  name: string; // e.g. "Michelin"
+  user_id: string;
+  tyre_size_id?: string;
+  brand_id?: string;
+  tyre_model_id?: string;
+  margin_type: 'percentage' | 'fixed';
+  margin_value: number;
+  priority: number;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface TyreModel {
-  id: string;
-  brandId: string;
-  name: string; // e.g. "Pilot Sport 4"
-}
-
-export interface TyrePrice {
-  id: string;
-  supplierId: string;
-  tyreSizeId: string;
-  tyreModelId: string;
-  brandId: string;
-  cost: number; // The price from the supplier
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface MarginConfig {
-  id: string;
-  userId: string;
-  tyreSizeId?: string; // If set, applies to this specific size
-  brandId?: string; // If set, applies to this specific brand
-  tyreModelId?: string; // If set, applies to this specific model
-  marginType: 'percentage' | 'fixed'; // Whether it's a percentage or fixed dollar amount
-  marginValue: number; // The actual value (e.g. 40 for 40% or 60 for $60)
-  priority: number; // Higher priority configs override lower ones when multiple match
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TyreSearchResult {
+export type TyreSearchResult = {
   id: string;
   size: string;
   brand: string;
   model: string;
   supplier: string;
   cost: number;
-  sellPrice: number;
-  margin: number;
-  marginType: 'percentage' | 'fixed';
+  sell_price: number;
+  margin_type: 'percentage' | 'fixed';
+  margin_value: number;
 }
 
-export interface PriceListRow {
+export type PriceListRow = {
   size: string;
   brand: string;
   model: string;
   cost: number;
 }
 
-export interface ProcessedPriceList {
+export type ProcessedPriceList = {
   supplierId: string;
   rows: PriceListRow[];
   errorRows?: string[];
+}
+
+// Authentication types
+export type User = {
+  id: string;
+  email?: string;
+}
+
+export type Session = {
+  user: User | null;
+  isLoading: boolean;
+  error: Error | null;
 }

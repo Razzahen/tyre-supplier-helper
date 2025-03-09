@@ -1,124 +1,111 @@
 
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
-import { Search, Truck, Percent, Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useIsMobile } from '@/hooks/use-mobile';
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Search, Settings, Gauge, BriefcaseBusiness } from "lucide-react";
+import UserMenu from "./UserMenu";
 
-interface NavItemProps {
+type NavLinkProps = {
   to: string;
   icon: React.ReactNode;
   label: string;
   isActive: boolean;
-}
-
-const NavItem = ({ to, icon, label, isActive }: NavItemProps) => {
-  return (
-    <Link to={to}>
-      <div
-        className={cn(
-          "flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all relative group",
-          isActive 
-            ? "text-primary font-medium bg-primary/10" 
-            : "text-muted-foreground hover:text-foreground hover:bg-accent"
-        )}
-      >
-        {icon}
-        <span>{label}</span>
-        {isActive && (
-          <motion.div
-            layoutId="activeNavIndicator"
-            className="absolute inset-0 rounded-lg border border-primary/20"
-            transition={{ type: "spring", duration: 0.5 }}
-          />
-        )}
-      </div>
-    </Link>
-  );
 };
 
-export function Navbar() {
-  const location = useLocation();
-  const isMobile = useIsMobile();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+type NavLinks = {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+}[];
 
-  const navItems = [
-    { to: '/', icon: <Search size={18} />, label: 'Search Tyres' },
-    { to: '/suppliers', icon: <Truck size={18} />, label: 'Suppliers' },
-    { to: '/margins', icon: <Percent size={18} />, label: 'Margins' },
+const Navbar = () => {
+  const location = useLocation();
+  const pathname = location.pathname;
+
+  const navLinks: NavLinks = [
+    {
+      to: "/",
+      icon: <Search className="h-5 w-5" />,
+      label: "Tyre Search",
+    },
+    {
+      to: "/suppliers",
+      icon: <BriefcaseBusiness className="h-5 w-5" />,
+      label: "Suppliers",
+    },
+    {
+      to: "/margins",
+      icon: <Settings className="h-5 w-5" />,
+      label: "Margins",
+    },
   ];
 
-  const desktopNav = (
-    <nav className="flex items-center space-x-1">
-      {navItems.map((item) => (
-        <NavItem
-          key={item.to}
-          to={item.to}
-          icon={item.icon}
-          label={item.label}
-          isActive={location.pathname === item.to}
-        />
-      ))}
-    </nav>
-  );
-
-  const mobileNav = (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="md:hidden"
-        aria-label="Toggle menu"
-      >
-        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-      </Button>
-
-      {mobileMenuOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="absolute top-14 left-0 right-0 bg-background border-b border-border p-4 z-50 md:hidden shadow-lg"
-        >
-          <div className="flex flex-col space-y-2">
-            {navItems.map((item) => (
-              <NavItem
-                key={item.to}
-                to={item.to}
-                icon={item.icon}
-                label={item.label}
-                isActive={location.pathname === item.to}
-              />
-            ))}
-          </div>
-        </motion.div>
-      )}
-    </>
-  );
-
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
-      <div className="container flex items-center justify-between h-16">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center space-x-2">
-            <span className="font-semibold text-xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-              TyreManager
-            </span>
+    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center px-4 sm:px-8">
+        <div className="mr-4 flex items-center">
+          <Link to="/" className="flex items-center gap-2">
+            <Gauge className="h-6 w-6 text-primary" />
+            <span className="font-semibold text-lg hidden sm:block">TyreAI</span>
           </Link>
-          {!isMobile && desktopNav}
         </div>
-
-        {isMobile ? mobileNav : null}
-
-        <div className="flex items-center space-x-2">
-          {/* Placeholder for future auth functionality */}
+        <nav className="hidden md:flex flex-1 items-center gap-6 text-sm">
+          {navLinks.map(({ to, icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              icon={icon}
+              label={label}
+              isActive={pathname === to}
+            />
+          ))}
+        </nav>
+        <div className="flex-1 flex items-center justify-center md:justify-end">
+          <div className="flex items-center gap-4">
+            <nav className="flex items-center md:hidden">
+              {navLinks.map(({ to, icon, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground ${
+                    pathname === to
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                  title={label}
+                >
+                  {icon}
+                </Link>
+              ))}
+            </nav>
+            <UserMenu />
+          </div>
         </div>
       </div>
     </header>
   );
-}
+};
+
+const NavLink: React.FC<NavLinkProps> = ({ to, icon, label, isActive }) => (
+  <Link
+    to={to}
+    className="relative flex items-center text-sm font-medium transition-colors hover:text-foreground/80"
+  >
+    <div className="flex items-center gap-2">
+      <span className="text-muted-foreground">{icon}</span>
+      <span className={isActive ? "text-foreground" : "text-muted-foreground"}>
+        {label}
+      </span>
+    </div>
+    {isActive && (
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+        layoutId="navbar-indicator"
+        initial={false}
+        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      />
+    )}
+  </Link>
+);
 
 export default Navbar;

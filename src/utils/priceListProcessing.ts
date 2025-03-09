@@ -1,5 +1,74 @@
 
-import { PriceListRow, ProcessedPriceList, TyreSize, TyreBrand, TyreModel } from '@/types';
+import { PriceListRow, ProcessedPriceList, TyreSize, TyreBrand, TyreModel, MarginConfig } from '@/types';
+
+// Parse tyre size into its components
+export const parseTyreSize = (sizeString: string): Partial<TyreSize> => {
+  // Expected format: "WIDTH/ASPECT-RATIOR{DIAMETER}" - e.g. 205/55R16
+  const regex = /^(\d+)\/(\d+)R(\d+)$/;
+  const match = sizeString.match(regex);
+  
+  if (match) {
+    return {
+      size: sizeString,
+      width: parseInt(match[1], 10),
+      aspect_ratio: parseInt(match[2], 10),
+      diameter: parseInt(match[3], 10),
+    } as Partial<TyreSize>;
+  }
+  
+  return { size: sizeString } as Partial<TyreSize>;
+};
+
+// Calculate sell price based on cost and margin configuration
+export const calculateSellPrice = (
+  cost: number,
+  marginType: 'percentage' | 'fixed',
+  marginValue: number
+): number => {
+  if (marginType === 'percentage') {
+    return cost * (1 + marginValue / 100);
+  } else {
+    return cost + marginValue;
+  }
+};
+
+// Find the most specific applicable margin configuration
+export const findApplicableMargin = (
+  configs: MarginConfig[],
+  sizeId: string,
+  brandId: string,
+  modelId?: string
+): MarginConfig | { marginType: 'percentage' | 'fixed'; marginValue: number } => {
+  // First look for model-specific config
+  if (modelId) {
+    const modelConfig = configs.find(c => c.tyre_model_id === modelId);
+    if (modelConfig) return modelConfig;
+  }
+  
+  // Then look for brand+size specific config
+  const brandSizeConfig = configs.find(c => 
+    c.tyre_size_id === sizeId && c.brand_id === brandId
+  );
+  if (brandSizeConfig) return brandSizeConfig;
+  
+  // Then brand-specific config
+  const brandConfig = configs.find(c => 
+    c.brand_id === brandId && !c.tyre_size_id
+  );
+  if (brandConfig) return brandConfig;
+  
+  // Then size-specific config
+  const sizeConfig = configs.find(c => 
+    c.tyre_size_id === sizeId && !c.brand_id
+  );
+  if (sizeConfig) return sizeConfig;
+  
+  // Finally, global config
+  return configs.find(c => !c.tyre_size_id && !c.brand_id) || {
+    marginType: 'percentage',
+    marginValue: 30, // Default 30% margin
+  };
+};
 
 // Mock function to simulate GPT-4o processing of price lists
 export const processPriceList = async (
@@ -33,74 +102,5 @@ export const processPriceList = async (
   return {
     supplierId,
     rows: mockData,
-  };
-};
-
-// Function to parse tyre size into its components
-export const parseTyreSize = (sizeString: string): Partial<TyreSize> => {
-  // Expected format: "WIDTH/ASPECT-RATIOR{DIAMETER}" - e.g. 205/55R16
-  const regex = /^(\d+)\/(\d+)R(\d+)$/;
-  const match = sizeString.match(regex);
-  
-  if (match) {
-    return {
-      size: sizeString,
-      width: parseInt(match[1], 10),
-      aspectRatio: parseInt(match[2], 10),
-      diameter: parseInt(match[3], 10),
-    };
-  }
-  
-  return { size: sizeString };
-};
-
-// Calculate sell price based on cost and margin configuration
-export const calculateSellPrice = (
-  cost: number,
-  marginType: 'percentage' | 'fixed',
-  marginValue: number
-): number => {
-  if (marginType === 'percentage') {
-    return cost * (1 + marginValue / 100);
-  } else {
-    return cost + marginValue;
-  }
-};
-
-// Find the most specific applicable margin configuration
-export const findApplicableMargin = (
-  configs: any[],
-  sizeId: string,
-  brandId: string,
-  modelId?: string
-) => {
-  // First look for model-specific config
-  if (modelId) {
-    const modelConfig = configs.find(c => c.tyreModelId === modelId);
-    if (modelConfig) return modelConfig;
-  }
-  
-  // Then look for brand+size specific config
-  const brandSizeConfig = configs.find(c => 
-    c.tyreSizeId === sizeId && c.brandId === brandId
-  );
-  if (brandSizeConfig) return brandSizeConfig;
-  
-  // Then brand-specific config
-  const brandConfig = configs.find(c => 
-    c.brandId === brandId && !c.tyreSizeId
-  );
-  if (brandConfig) return brandConfig;
-  
-  // Then size-specific config
-  const sizeConfig = configs.find(c => 
-    c.tyreSizeId === sizeId && !c.brandId
-  );
-  if (sizeConfig) return sizeConfig;
-  
-  // Finally, global config
-  return configs.find(c => !c.tyreSizeId && !c.brandId) || {
-    marginType: 'percentage',
-    marginValue: 30, // Default 30% margin
   };
 };

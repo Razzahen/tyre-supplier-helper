@@ -9,10 +9,250 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      margin_configs: {
+        Row: {
+          brand_id: string | null
+          created_at: string
+          id: string
+          margin_type: string
+          margin_value: number
+          priority: number
+          tyre_model_id: string | null
+          tyre_size_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string
+          id?: string
+          margin_type: string
+          margin_value: number
+          priority?: number
+          tyre_model_id?: string | null
+          tyre_size_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string
+          id?: string
+          margin_type?: string
+          margin_value?: number
+          priority?: number
+          tyre_model_id?: string | null
+          tyre_size_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "margin_configs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "tyre_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "margin_configs_tyre_model_id_fkey"
+            columns: ["tyre_model_id"]
+            isOneToOne: false
+            referencedRelation: "tyre_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "margin_configs_tyre_size_id_fkey"
+            columns: ["tyre_size_id"]
+            isOneToOne: false
+            referencedRelation: "tyre_sizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          contact: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          user_id: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          user_id: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tyre_brands: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      tyre_models: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tyre_models_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "tyre_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tyre_prices: {
+        Row: {
+          brand_id: string
+          cost: number
+          created_at: string
+          id: string
+          supplier_id: string
+          tyre_model_id: string
+          tyre_size_id: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          cost: number
+          created_at?: string
+          id?: string
+          supplier_id: string
+          tyre_model_id: string
+          tyre_size_id: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          cost?: number
+          created_at?: string
+          id?: string
+          supplier_id?: string
+          tyre_model_id?: string
+          tyre_size_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tyre_prices_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "tyre_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tyre_prices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tyre_prices_tyre_model_id_fkey"
+            columns: ["tyre_model_id"]
+            isOneToOne: false
+            referencedRelation: "tyre_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tyre_prices_tyre_size_id_fkey"
+            columns: ["tyre_size_id"]
+            isOneToOne: false
+            referencedRelation: "tyre_sizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tyre_sizes: {
+        Row: {
+          aspect_ratio: number
+          created_at: string
+          diameter: number
+          id: string
+          size: string
+          width: number
+        }
+        Insert: {
+          aspect_ratio: number
+          created_at?: string
+          diameter: number
+          id?: string
+          size: string
+          width: number
+        }
+        Update: {
+          aspect_ratio?: number
+          created_at?: string
+          diameter?: number
+          id?: string
+          size?: string
+          width?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      tyre_search_results: {
+        Row: {
+          brand: string | null
+          cost: number | null
+          id: string | null
+          margin_type: string | null
+          margin_value: number | null
+          model: string | null
+          sell_price: number | null
+          size: string | null
+          supplier: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

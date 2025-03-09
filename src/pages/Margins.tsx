@@ -6,113 +6,110 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MarginConfig as MarginConfigType, TyreSize, TyreBrand } from '@/types';
-import { Percent, DollarSign, Trash2 } from 'lucide-react';
+import { Percent, DollarSign, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock data for tyre sizes
-const mockTyreSizes: TyreSize[] = [
-  { id: '1', size: '205/55R16', width: 205, aspectRatio: 55, diameter: 16 },
-  { id: '2', size: '225/45R17', width: 225, aspectRatio: 45, diameter: 17 },
-  { id: '3', size: '235/35R19', width: 235, aspectRatio: 35, diameter: 19 },
-  { id: '4', size: '265/70R16', width: 265, aspectRatio: 70, diameter: 16 },
-];
-
-// Mock data for tyre brands
-const mockTyreBrands: TyreBrand[] = [
-  { id: '1', name: 'Michelin' },
-  { id: '2', name: 'Continental' },
-  { id: '3', name: 'Bridgestone' },
-  { id: '4', name: 'Pirelli' },
-  { id: '5', name: 'Goodyear' },
-];
-
-// Mock initial margin configurations
-const initialMarginConfigs: MarginConfigType[] = [
-  {
-    id: '1',
-    userId: 'user1',
-    marginType: 'percentage',
-    marginValue: 40,
-    priority: 0, // Global default
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    userId: 'user1',
-    tyreSizeId: '3', // 235/35R19
-    marginType: 'percentage',
-    marginValue: 35,
-    priority: 10, // Size-specific
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    userId: 'user1',
-    brandId: '1', // Michelin
-    marginType: 'fixed',
-    marginValue: 60,
-    priority: 20, // Brand-specific
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getMarginConfigs, createMarginConfig, deleteMarginConfig } from '@/api/margins';
+import { getTyreSizes } from '@/api/tyres';
+import { getTyreBrands } from '@/api/tyres';
 
 const Margins = () => {
   const { toast } = useToast();
-  const [marginConfigs, setMarginConfigs] = useState<MarginConfigType[]>(initialMarginConfigs);
+  const queryClient = useQueryClient();
+  
+  // Fetch data
+  const { data: marginConfigs = [], isLoading: isLoadingConfigs } = useQuery({
+    queryKey: ['margin-configs'],
+    queryFn: getMarginConfigs,
+  });
 
-  const getSizeById = (id: string) => mockTyreSizes.find(size => size.id === id)?.size || 'Unknown';
-  const getBrandById = (id: string) => mockTyreBrands.find(brand => brand.id === id)?.name || 'Unknown';
+  const { data: tyreSizes = [], isLoading: isLoadingSizes } = useQuery({
+    queryKey: ['tyre-sizes'],
+    queryFn: getTyreSizes,
+  });
+
+  const { data: tyreBrands = [], isLoading: isLoadingBrands } = useQuery({
+    queryKey: ['tyre-brands'],
+    queryFn: getTyreBrands,
+  });
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: createMarginConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-configs'] });
+      toast({
+        title: "Configuration saved",
+        description: "Margin configuration has been saved successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to save configuration: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteMarginConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-configs'] });
+      toast({
+        title: "Configuration deleted",
+        description: "Margin configuration has been removed",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete configuration: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
 
   const handleSaveConfig = (config: Partial<MarginConfigType>) => {
     // Determine priority based on specificity
     let priority = 0;
-    if (config.tyreSizeId && config.brandId) {
+    if (config.tyre_size_id && config.brand_id) {
       priority = 30; // Size + Brand specific
-    } else if (config.brandId) {
+    } else if (config.brand_id) {
       priority = 20; // Brand specific
-    } else if (config.tyreSizeId) {
+    } else if (config.tyre_size_id) {
       priority = 10; // Size specific
     }
 
-    // Check if a config with the same criteria already exists
-    const existingConfigIndex = marginConfigs.findIndex(c => 
-      (c.tyreSizeId === config.tyreSizeId || (!c.tyreSizeId && !config.tyreSizeId)) && 
-      (c.brandId === config.brandId || (!c.brandId && !config.brandId))
-    );
-
-    if (existingConfigIndex !== -1) {
-      // Update existing config
-      const updatedConfigs = [...marginConfigs];
-      updatedConfigs[existingConfigIndex] = {
-        ...updatedConfigs[existingConfigIndex],
-        ...config,
-        updatedAt: new Date().toISOString(),
-      };
-      setMarginConfigs(updatedConfigs);
-    } else {
-      // Add new config
-      const newConfig: MarginConfigType = {
-        id: `${marginConfigs.length + 1}`, // Mock ID generation
-        userId: 'user1', // Mock user ID
-        ...config as any,
-        priority,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setMarginConfigs([...marginConfigs, newConfig]);
-    }
+    createMutation.mutate({
+      ...config,
+      priority
+    } as Omit<MarginConfigType, 'id' | 'created_at' | 'updated_at' | 'user_id'>);
   };
 
   const handleDeleteConfig = (configId: string) => {
-    setMarginConfigs(marginConfigs.filter(c => c.id !== configId));
-    toast({
-      title: "Configuration deleted",
-      description: "Margin configuration has been removed",
-    });
+    deleteMutation.mutate(configId);
   };
+
+  const getSizeById = (id: string) => tyreSizes.find(size => size.id === id)?.size || 'Unknown';
+  const getBrandById = (id: string) => tyreBrands.find(brand => brand.id === id)?.name || 'Unknown';
+
+  const isLoading = isLoadingConfigs || isLoadingSizes || isLoadingBrands;
+
+  if (isLoading) {
+    return (
+      <Layout
+        title="Margin Configuration"
+        description="Set your preferred margins for different tyre categories"
+      >
+        <div className="flex flex-col items-center justify-center p-12">
+          <Loader2 size={48} className="animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Loading margin configurations...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout
@@ -123,8 +120,8 @@ const Margins = () => {
         <div className="lg:col-span-1">
           <MarginConfig
             onSave={handleSaveConfig}
-            tyreSizes={mockTyreSizes}
-            tyreBrands={mockTyreBrands}
+            tyreSizes={tyreSizes}
+            tyreBrands={tyreBrands}
             existingConfigs={marginConfigs}
           />
         </div>
@@ -151,29 +148,29 @@ const Margins = () => {
                     >
                       <div className="space-y-1">
                         <div className="flex flex-wrap gap-2 items-center">
-                          {config.tyreSizeId ? (
-                            <Badge variant="outline">Size: {getSizeById(config.tyreSizeId)}</Badge>
+                          {config.tyre_size_id ? (
+                            <Badge variant="outline">Size: {getSizeById(config.tyre_size_id)}</Badge>
                           ) : (
                             <Badge variant="outline">All Sizes</Badge>
                           )}
                           
-                          {config.brandId ? (
-                            <Badge variant="outline">Brand: {getBrandById(config.brandId)}</Badge>
+                          {config.brand_id ? (
+                            <Badge variant="outline">Brand: {getBrandById(config.brand_id)}</Badge>
                           ) : (
                             <Badge variant="outline">All Brands</Badge>
                           )}
                         </div>
                         
                         <div className="flex items-center text-sm font-medium">
-                          {config.marginType === 'percentage' ? (
+                          {config.margin_type === 'percentage' ? (
                             <Percent size={14} className="mr-1 text-green-500" />
                           ) : (
                             <DollarSign size={14} className="mr-1 text-green-500" />
                           )}
                           <span className="text-green-500">
-                            {config.marginType === 'percentage'
-                              ? `${config.marginValue}% margin`
-                              : `$${config.marginValue.toFixed(2)} markup`}
+                            {config.margin_type === 'percentage'
+                              ? `${config.margin_value}% margin`
+                              : `$${config.margin_value.toFixed(2)} markup`}
                           </span>
                         </div>
                       </div>

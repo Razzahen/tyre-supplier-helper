@@ -5,9 +5,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+import { AuthProvider } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import Suppliers from "./pages/Suppliers";
 import Margins from "./pages/Margins";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,15 +21,39 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/suppliers" element={<Suppliers />} />
-            <Route path="/margins" element={<Margins />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AnimatePresence>
+        <AuthProvider>
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route 
+                path="/" 
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/suppliers" 
+                element={
+                  <ProtectedRoute>
+                    <Suppliers />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/margins" 
+                element={
+                  <ProtectedRoute>
+                    <Margins />
+                  </ProtectedRoute>
+                } 
+              />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AnimatePresence>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
