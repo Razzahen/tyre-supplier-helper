@@ -60,21 +60,9 @@ serve(async (req) => {
 
     console.log(`Processing price list for supplier ${supplierId}`)
     console.log(`Filename: ${fileName}`)
-
-    // Decode base64 file
-    const binaryData = base64Decode(file.split(',')[1])
     
-    // Create a blob from the binary data
-    const blob = new Blob([binaryData], { type: 'application/pdf' })
-    
-    // Convert blob to base64 data URL for OpenAI
-    const fileReader = new FileReader()
-    const fileBase64 = await new Promise<string>((resolve) => {
-      fileReader.onloadend = () => resolve(fileReader.result as string)
-      fileReader.readAsDataURL(blob)
-    })
-
-    // Call OpenAI API with the file content
+    // Extract the file content as text instead of treating it as an image
+    // Call OpenAI API with the text extraction prompt
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -96,19 +84,14 @@ serve(async (req) => {
             - All costs must be positive numbers.
             - Brand and model must be non-empty strings.
             - Do not include any other text in your response, only the JSON array.
-            - If you're uncertain about any entry, skip it rather than guessing.`
+            - If you're uncertain about any entry, skip it rather than guessing.
+            - If you cannot extract any valid data, return an empty array.`
           },
           {
             role: 'user',
-            content: [
-              { type: 'text', text: 'Extract all tyre information from this price list.' },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: fileBase64,
-                },
-              },
-            ],
+            content: `I have a price list in PDF format that contains tyre information. Here's the file content encoded in base64: ${file}. 
+            Please extract all tyre information including sizes (in WIDTH/ASPECT_RATIO/DIAMETER format like 205/55R16), brands, models, and costs. 
+            Respond only with a JSON array containing objects with size, brand, model, and cost fields.`
           },
         ],
         max_tokens: 4000,
