@@ -61,13 +61,13 @@ serve(async (req) => {
     console.log(`Processing price list for supplier ${supplierId}`)
     console.log(`Filename: ${fileName}`)
     
-    // Decode base64 file and convert to binary
+    // Extract base64 content
     let fileContent = file;
     if (file.includes(';base64,')) {
       fileContent = file.split(';base64,')[1];
     }
     
-    // Prepare the file as an attachment for OpenAI
+    // Call OpenAI API to extract data from the price list
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -94,98 +94,89 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: [
-              { 
-                type: 'text', 
-                text: 'Extract all tyre information from this PDF price list. Return ONLY a JSON array with objects containing size, brand, model, and cost fields.' 
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:application/pdf;base64,${fileContent}`
-                }
-              }
-            ]
-          },
+            content: `I have a price list in PDF format that contains tyre information. Here's the file content encoded in base64: ${fileContent}. 
+            Please extract all tyre information including sizes (in WIDTH/ASPECT_RATIO/DIAMETER format like 205/55R16), brands, models, and costs. 
+            Respond only with a JSON array containing objects with size, brand, model, and cost fields.`
+          }
         ],
         max_tokens: 4000,
         temperature: 0.1, // Low temperature for more deterministic output
       }),
-    })
+    });
 
     if (!response.ok) {
-      const error = await response.json()
-      console.error('OpenAI API error:', error)
-      throw new Error(`OpenAI API error: ${error.error?.message || 'Unknown error'}`)
+      const error = await response.json();
+      console.error('OpenAI API error:', error);
+      throw new Error(`OpenAI API error: ${error.error?.message || 'Unknown error'}`);
     }
 
-    const openAIResponse = await response.json()
-    const content = openAIResponse.choices[0].message.content
+    const openAIResponse = await response.json();
+    const content = openAIResponse.choices[0].message.content;
     
-    console.log('OpenAI response received successfully')
+    console.log('OpenAI response received successfully');
     
     // Parse the response to extract the JSON data
-    let extractedData = []
-    let parseError = null
+    let extractedData = [];
+    let parseError = null;
     
     try {
       // Try to parse the entire response as JSON
-      extractedData = JSON.parse(content)
-      console.log(`Successfully parsed JSON with ${extractedData.length} items`)
+      extractedData = JSON.parse(content);
+      console.log(`Successfully parsed JSON with ${extractedData.length} items`);
     } catch (e) {
       // If that fails, try to extract JSON from the text response
-      console.log("Couldn't parse full response as JSON, attempting to extract JSON part")
-      const jsonMatch = content.match(/\[\s*\{.*\}\s*\]/s)
+      console.log("Couldn't parse full response as JSON, attempting to extract JSON part");
+      const jsonMatch = content.match(/\[\s*\{.*\}\s*\]/s);
       if (jsonMatch) {
         try {
-          extractedData = JSON.parse(jsonMatch[0])
-          console.log(`Successfully extracted and parsed JSON with ${extractedData.length} items`)
+          extractedData = JSON.parse(jsonMatch[0]);
+          console.log(`Successfully extracted and parsed JSON with ${extractedData.length} items`);
         } catch (jsonError) {
-          parseError = `Error parsing extracted JSON: ${jsonError.message}`
-          console.error(parseError)
+          parseError = `Error parsing extracted JSON: ${jsonError.message}`;
+          console.error(parseError);
         }
       } else {
-        parseError = "Could not extract JSON data from OpenAI response"
-        console.error(parseError)
+        parseError = "Could not extract JSON data from OpenAI response";
+        console.error(parseError);
       }
     }
 
     if (extractedData.length === 0) {
-      throw new Error(parseError || "No valid data could be extracted from the document")
+      throw new Error(parseError || "No valid data could be extracted from the document");
     }
 
-    console.log(`Extracted ${extractedData.length} tyre prices`)
+    console.log(`Extracted ${extractedData.length} tyre prices`);
 
     // Validate the extracted data
-    const validatedData = []
-    const invalidItems = []
+    const validatedData = [];
+    const invalidItems = [];
     
     for (const item of extractedData) {
-      const validation = validateTyreData(item)
+      const validation = validateTyreData(item);
       if (validation.valid) {
         validatedData.push({
           size: item.size,
           brand: item.brand,
           model: item.model,
           cost: item.cost
-        })
+        });
       } else {
         invalidItems.push({
           item,
           errors: validation.errors
-        })
+        });
       }
     }
 
-    console.log(`Validated ${validatedData.length} tyre prices`)
-    console.log(`Found ${invalidItems.length} invalid items`)
+    console.log(`Validated ${validatedData.length} tyre prices`);
+    console.log(`Found ${invalidItems.length} invalid items`);
     
     if (invalidItems.length > 0) {
-      console.log('Invalid items details:', JSON.stringify(invalidItems))
+      console.log('Invalid items details:', JSON.stringify(invalidItems));
     }
 
     if (validatedData.length === 0) {
-      throw new Error("No valid tyre data found in the document. Please check the file format and content.")
+      throw new Error("No valid tyre data found in the document. Please check the file format and content.");
     }
 
     return new Response(
@@ -200,9 +191,9 @@ serve(async (req) => {
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    );
   } catch (error) {
-    console.error('Error processing price list:', error)
+    console.error('Error processing price list:', error);
     return new Response(
       JSON.stringify({
         success: false,
@@ -212,6 +203,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
       }
-    )
+    );
   }
-})
+});
