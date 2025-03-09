@@ -7,6 +7,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUp, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { PriceListRow, ProcessedPriceList } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PriceListUploaderProps {
   supplierId: string;
@@ -28,38 +29,56 @@ const PriceListUploader = ({
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
-  const [mockResult, setMockResult] = useState<PriceListRow[]>([]);
+  const [results, setResults] = useState<PriceListRow[]>([]);
 
-  // This function would use GPT-4o to process the file in a real implementation
   const processPriceList = async (file: File): Promise<ProcessedPriceList> => {
-    // Mock processing for demo purposes
     setUploadStatus('uploading');
     
-    // Simulate file upload
-    for (let i = 0; i <= 100; i += 10) {
+    // Simulate upload progress
+    for (let i = 0; i <= 100; i += 20) {
       setProgress(i);
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     
+    // Convert file to base64
+    const fileBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    
     setUploadStatus('processing');
-    await new Promise((resolve) => setTimeout(resolve, 1500));
     
-    // Mock data - in a real app, this would come from GPT-4o
-    const mockData: PriceListRow[] = [
-      { size: "205/55R16", brand: "Michelin", model: "Primacy 4", cost: 120 },
-      { size: "205/55R16", brand: "Continental", model: "PremiumContact 6", cost: 110 },
-      { size: "225/45R17", brand: "Bridgestone", model: "Turanza T005", cost: 145 },
-      { size: "225/45R17", brand: "Pirelli", model: "P Zero", cost: 160 },
-      { size: "235/35R19", brand: "Michelin", model: "Pilot Sport 4", cost: 210 },
-      { size: "265/70R16", brand: "Goodyear", model: "Wrangler AT", cost: 180 },
-    ];
-    
-    setMockResult(mockData);
-    
-    return {
-      supplierId,
-      rows: mockData,
-    };
+    try {
+      // Call the Supabase Edge Function to process the file
+      const { data, error } = await supabase.functions.invoke('process-price-list', {
+        body: {
+          file: fileBase64,
+          supplierId,
+          fileName: file.name
+        }
+      });
+      
+      if (error) {
+        console.error('Error calling process-price-list function:', error);
+        throw new Error(error.message || 'Failed to process the price list');
+      }
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to process the price list');
+      }
+      
+      setResults(data.data.rows);
+      
+      return {
+        supplierId,
+        rows: data.data.rows,
+      };
+    } catch (error) {
+      console.error('Error processing price list:', error);
+      throw error;
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,7 +109,7 @@ const PriceListUploader = ({
       onUploadComplete(result);
     } catch (error) {
       setUploadStatus('error');
-      setErrorMessage('Failed to process the price list. Please try again or use a different file format.');
+      setErrorMessage(error.message || 'Failed to process the price list. Please try again or use a different file format.');
       toast({
         title: "Error",
         description: "Failed to process the price list",
@@ -127,7 +146,7 @@ const PriceListUploader = ({
             <Check className="h-4 w-4 text-green-600" />
             <AlertTitle>Success!</AlertTitle>
             <AlertDescription>
-              Price list successfully processed. {mockResult.length} tyre prices imported.
+              Price list successfully processed. {results.length} tyre prices imported.
             </AlertDescription>
           </Alert>
         );
@@ -151,7 +170,7 @@ const PriceListUploader = ({
       <CardHeader>
         <CardTitle>Upload Price List</CardTitle>
         <CardDescription>
-          Upload a price list for {supplierName}. We'll extract tyre information automatically.
+          Upload a price list for {supplierName}. We'll extract tyre information automatically using AI.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -201,13 +220,13 @@ const PriceListUploader = ({
 
         {renderUploadStatus()}
 
-        {uploadStatus === 'success' && mockResult.length > 0 && (
+        {uploadStatus === 'success' && results.length > 0 && (
           <div className="border rounded-lg overflow-hidden">
             <div className="bg-muted py-2 px-4 text-sm font-medium">
-              Preview ({Math.min(3, mockResult.length)} of {mockResult.length})
+              Preview ({Math.min(3, results.length)} of {results.length})
             </div>
             <div className="p-4 space-y-3">
-              {mockResult.slice(0, 3).map((row, index) => (
+              {results.slice(0, 3).map((row, index) => (
                 <div key={index} className="text-sm p-2 bg-accent/20 rounded">
                   <span className="font-medium">{row.brand} {row.model}</span>
                   <span className="mx-2">·</span>
@@ -216,9 +235,9 @@ const PriceListUploader = ({
                   <span>${row.cost.toFixed(2)}</span>
                 </div>
               ))}
-              {mockResult.length > 3 && (
+              {results.length > 3 && (
                 <p className="text-xs text-center text-muted-foreground pt-2">
-                  and {mockResult.length - 3} more items
+                  and {results.length - 3} more items
                 </p>
               )}
             </div>
