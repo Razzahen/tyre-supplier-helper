@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +20,6 @@ const SupplierForm = ({ supplier, onSubmit, onCancel }: SupplierFormProps) => {
   const [phone, setPhone] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Initialize form if editing
   useEffect(() => {
     if (supplier) {
       setName(supplier.name || '');

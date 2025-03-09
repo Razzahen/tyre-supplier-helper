@@ -19,9 +19,22 @@ export const getMarginConfigs = async (): Promise<MarginConfig[]> => {
 export const createMarginConfig = async (
   config: Omit<MarginConfig, 'id' | 'created_at' | 'updated_at' | 'user_id'>
 ): Promise<MarginConfig> => {
+  // Get current user ID
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
+  // Create the full config object with user_id
+  const fullConfig = {
+    ...config,
+    user_id: user.id
+  };
+
   const { data, error } = await supabase
     .from('margin_configs')
-    .insert(config)
+    .insert(fullConfig)
     .select()
     .single();
 

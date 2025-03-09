@@ -20,9 +20,13 @@ export const createSupplier = async (supplier: Omit<Supplier, 'id' | 'user_id' |
   // Get current user ID
   const { data: { user } } = await supabase.auth.getUser();
   
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
   const newSupplier = {
     ...supplier,
-    user_id: user?.id
+    user_id: user.id
   };
 
   const { data, error } = await supabase
